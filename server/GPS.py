@@ -1,24 +1,32 @@
 #!/bin/python
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 from socket import AF_INET, socket, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 from threading import Thread
 from datetime import datetime
 from dateutil import tz
-import googlemaps
 import math
 import os
 import requests
 import json
 import psycopg2
 
+
+# Import dotenv with API keys and initialize API connections
+config = dotenv_values("../.env")
+
+
+def get_db_conn():
+    global config
+    return psycopg2.connect(user=config.get("DB_USER", "root"),
+                            password=config.get("DB_PASS", "password"),
+                            host=config.get("DB_HOST", "localhost"),
+                            port=config.get("DB_PORT", 5432),
+                            database=config.get("DB_NAME", "db"))
+
 #TODO
 def logdb(imei, protocol_name, terminal_server, server_terminal, ip):
-    connection = psycopg2.connect(user=,
-                                  password=,
-                                  host=,
-                                  port=,
-                                  database=)
+    connection = get_db_conn()
     cursor = connection.cursor()
     cursor.execute(f"""INSERT INTO public.log(
 	    imei, protocol_name, terminal_server, server_terminal, time_st, ip)
@@ -130,11 +138,7 @@ def read_incoming_packet(client, packet):
     
     print("packet :::::::::::::: > ",packet )
     try:
-        connection = psycopg2.connect(user=,
-                                      password=,
-                                      host=,
-                                      port=,
-                                      database=)
+        connection = get_db_conn()
         cursor = connection.cursor()
         cursor.execute(f"""
         select message from sendmsg where done = False and imei = '{addresses[client]['imei']}'
@@ -327,11 +331,7 @@ def answer_gps(client, query):
     a.write("GPSlat:{}:GPSlon:{}".format(gps_latitude,gps_longitude))
     print('***************************[', addresses[client]['address'][0], ']', "POSITION/GPS : Valid =", position_is_valid, "; Nb Sat =", gps_nb_sat, "; Lat =", gps_latitude, "; Long =", gps_longitude, "; Speed =", gps_speed, "; Heading =", gps_heading,'***********')
     LOGGER('location', 'location_log.txt', addresses[client]['address'][0], addresses[client]['imei'], '', positions[client]['gps'])
-    connection = psycopg2.connect(user=,
-                              password=,
-                              host=,
-                              port=,
-                              database=)
+    connection = get_db_conn()
     cursor = connection.cursor()
     try:
         cursor.execute(f"""insert into public.gpsdata(address,imei, lat_long, time_st, lbs,status,protocol) 
@@ -442,11 +442,7 @@ def answer_wifi_lbs(client, query):
     f = open('./dataLBS','w')
     f.write('LBSLAT:{}:LBSlon:{}'.format(lat,lon))
 
-    connection = psycopg2.connect(user=,
-                              password=,
-                              host=,
-                              port=,
-                              database=)
+    connection = get_db_conn()
     cursor = connection.cursor()
     try:
         cursor.execute(f"""insert into public.gpsdata(address,imei, lat_long, time_st, lbs,status,protocol) 
@@ -709,11 +705,9 @@ protocol_dict = {
 }
 
 
-# Import dotenv with API keys and initialize API connections
-
 # Details about host server
-HOST = 
-PORT = 
+HOST = config.get("HOST", "127.0.0.1")
+PORT = int(config.get("PORT", "12345"))
 BUFSIZ = 10240 #4096
 ADDR = (HOST, PORT)
 
